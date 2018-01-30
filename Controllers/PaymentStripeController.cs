@@ -56,7 +56,7 @@ namespace Nop.Plugin.Payments.Stripe.Controllers
                 model.ApiKey_OverrideForStore = _settingService.SettingExists(stripePaymentSettings, x => x.ApiKey, storeScope);
             }
 
-            return View("~/Plugins/Payments.Stripe/Views/PaymentStripe/Configure.cshtml", model);
+            return View("~/Plugins/Payments.Stripe/Views/Configure.cshtml", model);
         }
 
         [HttpPost]
@@ -167,7 +167,7 @@ namespace Nop.Plugin.Payments.Stripe.Controllers
             if (selectedYear != null)
                 selectedYear.Selected = true;
 
-            return View("~/Plugins/Payments.Stripe/Views/PaymentStripe/PaymentInfo.cshtml", model);
+            return View("~/Plugins/Payments.Stripe/Views/PaymentInfo.cshtml", model);
         }
 
         [NonAction]
