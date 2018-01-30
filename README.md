@@ -7,4 +7,4 @@ This plugin only does payments, refunds and other stripe functionality will be a
 
 To use, this needs to be placed in the Plugins folder of the nopcommerce solution. It will then be built. 
 
-It has only been tested on nopcommerce 3.6 and above.
+It has only been tested on nopcommerce 4.00 and above.
