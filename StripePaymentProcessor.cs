@@ -1,24 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Net;
-using System.Text;
-using System.Web;
-using System.Web.Routing;
+using System.Linq;
+using Microsoft.AspNetCore.Http;
 using Nop.Core;
-using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Plugins;
+using Nop.Plugin.Payments.Stripe.Models;
+using Nop.Plugin.Payments.Stripe.Validators;
 using Nop.Services.Configuration;
-using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
-using Nop.Plugin.Payments.Stripe.Controllers;
 using Stripe;
 
 namespace Nop.Plugin.Payments.Stripe
@@ -27,23 +22,33 @@ namespace Nop.Plugin.Payments.Stripe
     {
         #region Fields
 
-        private readonly StripePaymentSettings _stripePaymentSettings;
-        private readonly ISettingService _settingService;
-        private readonly IOrderTotalCalculationService _orderTotalCalculationService;
+        private readonly CurrencySettings _currencySettings;
         private readonly ICurrencyService _currencyService;
+        private readonly ILocalizationService _localizationService;
+        private readonly IOrderTotalCalculationService _orderTotalCalculationService;
+        private readonly ISettingService _settingService;
+        private readonly IWebHelper _webHelper;
+        private readonly StripePaymentSettings _stripePaymentSettings;
 
         #endregion
 
         #region Ctor
 
-        public StripePaymentProcessor(StripePaymentSettings stripePaymentSettings,
-            ISettingService settingService, IOrderTotalCalculationService orderTotalCalculationService,
-            ICurrencyService currencyService)
+        public StripePaymentProcessor(CurrencySettings currencySettings,
+            ICurrencyService currencyService,
+            ILocalizationService localizationService,
+            IOrderTotalCalculationService orderTotalCalculationService,
+            ISettingService settingService,
+            IWebHelper webHelper,
+            StripePaymentSettings stripePaymentSettings)
         {
-            this._stripePaymentSettings = stripePaymentSettings;
-            this._settingService = settingService;
-            this._orderTotalCalculationService = orderTotalCalculationService;
+            this._currencySettings = currencySettings;
             this._currencyService = currencyService;
+            this._localizationService = localizationService;
+            this._orderTotalCalculationService = orderTotalCalculationService;
+            this._settingService = settingService;
+            this._webHelper = webHelper;
+            this._stripePaymentSettings = stripePaymentSettings;
         }
 
         #endregion
@@ -64,8 +69,8 @@ namespace Nop.Plugin.Payments.Stripe
             StripeCreditCardOptions cardOptions = new StripeCreditCardOptions()
             {
                 Number = processPaymentRequest.CreditCardNumber,
-                ExpirationYear = processPaymentRequest.CreditCardExpireYear.ToString(),
-                ExpirationMonth = processPaymentRequest.CreditCardExpireMonth.ToString(),
+                ExpirationYear = processPaymentRequest.CreditCardExpireYear,
+                ExpirationMonth = processPaymentRequest.CreditCardExpireMonth,
                 Cvc = processPaymentRequest.CreditCardCvv2,
                 Name = processPaymentRequest.CustomerId.ToString()
             };
@@ -88,7 +93,7 @@ namespace Nop.Plugin.Payments.Stripe
             StripeChargeCreateOptions chargeOptions = new StripeChargeCreateOptions()
             {
                 Amount = paymentAmount,
-                Currency = "gbp",
+                Currency = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId)?.CurrencyCode,
                 Description = processPaymentRequest.OrderGuid.ToString()
 
             };
@@ -139,12 +144,7 @@ namespace Nop.Plugin.Payments.Stripe
         private bool ChargeCard(string tokenId, StripeChargeCreateOptions chargeOptions)
         {
             // setting up the card
-            chargeOptions.Source = new StripeSourceOptions()
-            {
-                // set this property if using a token
-                TokenId = tokenId
-
-            };
+            chargeOptions.SourceTokenOrExistingSourceId = tokenId;
 
             // set this property if using a customer
             //    myCharge.CustomerId = *customerId*;
@@ -287,34 +287,64 @@ namespace Nop.Plugin.Payments.Stripe
         }
 
         /// <summary>
-        /// Gets a route for provider configuration
+        /// Validate payment form
         /// </summary>
-        /// <param name="actionName">Action name</param>
-        /// <param name="controllerName">Controller name</param>
-        /// <param name="routeValues">Route values</param>
-        public void GetConfigurationRoute(out string actionName, out string controllerName, out RouteValueDictionary routeValues)
+        /// <param name="form">The parsed form values</param>
+        /// <returns>List of validating errors</returns>
+        public IList<string> ValidatePaymentForm(IFormCollection form)
         {
-            actionName = "Configure";
-            controllerName = "PaymentStripe";
-            routeValues = new RouteValueDictionary { { "Namespaces", "Nop.Plugin.Payments.Stripe.Controllers" }, { "area", null } };
+            var warnings = new List<string>();
+
+            //validate
+            var validator = new PaymentInfoValidator(_localizationService);
+            var model = new PaymentInfoModel
+            {
+                CardholderName = form["CardholderName"],
+                CardNumber = form["CardNumber"],
+                CardCode = form["CardCode"],
+                ExpireMonth = form["ExpireMonth"],
+                ExpireYear = form["ExpireYear"]
+            };
+            var validationResult = validator.Validate(model);
+            if (!validationResult.IsValid)
+                warnings.AddRange(validationResult.Errors.Select(error => error.ErrorMessage));
+
+            return warnings;
         }
 
         /// <summary>
-        /// Gets a route for payment info
+        /// Get payment information
         /// </summary>
-        /// <param name="actionName">Action name</param>
-        /// <param name="controllerName">Controller name</param>
-        /// <param name="routeValues">Route values</param>
-        public void GetPaymentInfoRoute(out string actionName, out string controllerName, out RouteValueDictionary routeValues)
+        /// <param name="form">The parsed form values</param>
+        /// <returns>Payment info holder</returns>
+        public ProcessPaymentRequest GetPaymentInfo(IFormCollection form)
         {
-            actionName = "PaymentInfo";
-            controllerName = "PaymentStripe";
-            routeValues = new RouteValueDictionary { { "Namespaces", "Nop.Plugin.Payments.Stripe.Controllers" }, { "area", null } };
+            return new ProcessPaymentRequest
+            {
+                CreditCardType = form["CreditCardType"],
+                CreditCardName = form["CardholderName"],
+                CreditCardNumber = form["CardNumber"],
+                CreditCardExpireMonth = int.Parse(form["ExpireMonth"]),
+                CreditCardExpireYear = int.Parse(form["ExpireYear"]),
+                CreditCardCvv2 = form["CardCode"]
+            };
         }
 
-        public Type GetControllerType()
+        /// <summary>
+        /// Gets a configuration page URL
+        /// </summary>
+        public override string GetConfigurationPageUrl()
         {
-            return typeof(PaymentStripeController);
+            return $"{_webHelper.GetStoreLocation()}Admin/PaymentStripe/Configure";
+        }
+
+        /// <summary>
+        /// Gets a view component for displaying plugin in public store ("payment info" checkout step)
+        /// </summary>
+        /// <param name="viewComponentName">View component name</param>
+        public void GetPublicViewComponent(out string viewComponentName)
+        {
+            viewComponentName = "PaymentStripe";
         }
 
         public override void Install()
@@ -328,12 +358,14 @@ namespace Nop.Plugin.Payments.Stripe
             _settingService.SaveSetting(settings);
 
             //locales
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.Instructions", "https://stripe.com/docs/dashboard#api-keys");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.TransactMode", "Transaction mode");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.AdditionalFee", "Additional fee");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.AdditionalFee.Hint", "Enter additional fee to charge your customers.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.AdditionalFeePercentage", "Additional fee. Use percentage");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.ApiKey", "Public Api Key");
-
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.ApiKey", "Public API Key");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.PaymentMethodDescription", "Pay by credit / debit card");
 
             base.Install();
         }
@@ -344,12 +376,14 @@ namespace Nop.Plugin.Payments.Stripe
             _settingService.DeleteSetting<StripePaymentSettings>();
 
             //locales
-            this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.AdditionalFee");
-            this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.AdditionalFee.Hint");
-            this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.AdditionalFeePercentage");
-            this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.AdditionalFeePercentage.Hint");
-            this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.TransactMode");
-            this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.TransactMode.Hint");
+            this.DeletePluginLocaleResource("Plugins.Payments.Stripe.Fields.Instructions");
+            this.DeletePluginLocaleResource("Plugins.Payments.Stripe.Fields.TransactMode");
+            this.DeletePluginLocaleResource("Plugins.Payments.Stripe.Fields.AdditionalFee");
+            this.DeletePluginLocaleResource("Plugins.Payments.Stripe.Fields.AdditionalFee.Hint");
+            this.DeletePluginLocaleResource("Plugins.Payments.Stripe.Fields.AdditionalFeePercentage");
+            this.DeletePluginLocaleResource("Plugins.Payments.Stripe.Fields.AdditionalFeePercentage.Hint");
+            this.DeletePluginLocaleResource("Plugins.Payments.Stripe.Fields.ApiKey");
+            this.DeletePluginLocaleResource("Plugins.Payments.Stripe.PaymentMethodDescription");
 
             base.Uninstall();
         }
@@ -433,6 +467,16 @@ namespace Nop.Plugin.Payments.Stripe
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Gets a payment method description that will be displayed on checkout pages in the public store
+        /// </summary>
+        public string PaymentMethodDescription
+        {
+            //return description of this payment method to be display on "payment method" checkout step. good practice is to make it localizable
+            //for example, for a redirection payment method, description may be like this: "You will be redirected to PayPal site to complete the payment"
+            get { return _localizationService.GetResource("Plugins.Payments.Stripe.PaymentMethodDescription"); }
         }
 
         #endregion

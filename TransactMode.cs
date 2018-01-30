@@ -1,7 +1,7 @@
 namespace Nop.Plugin.Payments.Stripe
 {
     /// <summary>
-    /// Represents Authorize.Net payment processor transaction mode
+    /// Represents Stripe payment processor transaction mode
     /// </summary>
     public enum TransactMode
     {
