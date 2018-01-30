@@ -38,7 +38,7 @@ namespace Nop.Plugin.Payments.Manual
         #endregion
 
         #region Methods
-        
+
         /// <summary>
         /// Process a payment
         /// </summary>
@@ -166,7 +166,7 @@ namespace Nop.Plugin.Payments.Manual
                         return result;
                     }
             }
-            
+
             return result;
         }
 
@@ -242,7 +242,7 @@ namespace Nop.Plugin.Payments.Manual
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Manual.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Manual.Fields.TransactMode", "After checkout mark payment as");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Manual.Fields.TransactMode.Hint", "Specify transaction mode.");
-            
+
 
             base.Install();
         }
@@ -259,7 +259,7 @@ namespace Nop.Plugin.Payments.Manual
             this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.AdditionalFeePercentage.Hint");
             this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.TransactMode");
             this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.TransactMode.Hint");
-            
+
             base.Uninstall();
         }
 
@@ -332,7 +332,7 @@ namespace Nop.Plugin.Payments.Manual
                 return PaymentMethodType.Standard;
             }
         }
-        
+
         /// <summary>
         /// Gets a value indicating whether we should display a payment information page for this plugin
         /// </summary>
@@ -345,6 +345,6 @@ namespace Nop.Plugin.Payments.Manual
         }
 
         #endregion
-        
+
     }
 }

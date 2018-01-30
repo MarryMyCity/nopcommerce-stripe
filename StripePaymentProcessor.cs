@@ -49,7 +49,7 @@ namespace Nop.Plugin.Payments.Stripe
         #endregion
 
         #region Methods
-        
+
         /// <summary>
         /// Process a payment
         /// </summary>
@@ -58,7 +58,7 @@ namespace Nop.Plugin.Payments.Stripe
         public ProcessPaymentResult ProcessPayment(ProcessPaymentRequest processPaymentRequest)
         {
             var result = new ProcessPaymentResult();
-            
+
             result.AllowStoringCreditCardNumber = false;
 
             StripeCreditCardOptions cardOptions = new StripeCreditCardOptions()
@@ -84,7 +84,7 @@ namespace Nop.Plugin.Payments.Stripe
             {
                 paymentAmount = (int)(processPaymentRequest.OrderTotal * 100);
             }
-            
+
             StripeChargeCreateOptions chargeOptions = new StripeChargeCreateOptions()
             {
                 Amount = paymentAmount,
@@ -257,7 +257,7 @@ namespace Nop.Plugin.Payments.Stripe
                         return result;
                     }
             }
-            
+
             return result;
         }
 
@@ -323,7 +323,7 @@ namespace Nop.Plugin.Payments.Stripe
             var settings = new StripePaymentSettings
             {
                 TransactMode = TransactMode.Authorize
-                
+
             };
             _settingService.SaveSetting(settings);
 
@@ -333,7 +333,7 @@ namespace Nop.Plugin.Payments.Stripe
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.AdditionalFeePercentage", "Additional fee. Use percentage");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.Stripe.Fields.ApiKey", "Public Api Key");
-            
+
 
             base.Install();
         }
@@ -350,7 +350,7 @@ namespace Nop.Plugin.Payments.Stripe
             this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.AdditionalFeePercentage.Hint");
             this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.TransactMode");
             this.DeletePluginLocaleResource("Plugins.Payments.Manual.Fields.TransactMode.Hint");
-            
+
             base.Uninstall();
         }
 
@@ -423,7 +423,7 @@ namespace Nop.Plugin.Payments.Stripe
                 return PaymentMethodType.Standard;
             }
         }
-        
+
         /// <summary>
         /// Gets a value indicating whether we should display a payment information page for this plugin
         /// </summary>

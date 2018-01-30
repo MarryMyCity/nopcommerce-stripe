@@ -22,8 +22,8 @@ namespace Nop.Plugin.Payments.Stripe.Controllers
         private readonly ILocalizationService _localizationService;
 
         public PaymentStripeController(IWorkContext workContext,
-            IStoreService storeService, 
-            ISettingService settingService, 
+            IStoreService storeService,
+            ISettingService settingService,
             ILocalizationService localizationService)
         {
             this._workContext = workContext;
@@ -31,7 +31,7 @@ namespace Nop.Plugin.Payments.Stripe.Controllers
             this._settingService = settingService;
             this._localizationService = localizationService;
         }
-        
+
         [AdminAuthorize]
         [ChildActionOnly]
         public ActionResult Configure()
@@ -77,7 +77,7 @@ namespace Nop.Plugin.Payments.Stripe.Controllers
             stripePaymentSettings.AdditionalFeePercentage = model.AdditionalFeePercentage;
             stripePaymentSettings.ApiKey = model.ApiKey;
             /* We do not clear cache after each setting update.
-             * This behavior can increase performance because cached settings will not be cleared 
+             * This behavior can increase performance because cached settings will not be cleared
              * and loaded from database after each update */
 
             if (model.TransactModeId_OverrideForStore || storeScope == 0)
@@ -112,7 +112,7 @@ namespace Nop.Plugin.Payments.Stripe.Controllers
         public ActionResult PaymentInfo()
         {
             var model = new PaymentInfoModel();
-            
+
             //CC types
             model.CreditCardTypes.Add(new SelectListItem
                 {
@@ -129,7 +129,7 @@ namespace Nop.Plugin.Payments.Stripe.Controllers
                 Text = "Amex",
                 Value = "Amex",
             });
-            
+
             //years
             for (int i = 0; i < 15; i++)
             {
