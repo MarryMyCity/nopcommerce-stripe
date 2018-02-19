@@ -56,7 +56,7 @@ namespace Nop.Plugin.Payments.Stripe.Components
                     selectedYear.Selected = true;
             }
 
-            return View("~/Plugins/Payments.Stripe/Views/PaymentInfo.cshtml", model);
+            return View("PaymentInfo", model);
         }
     }
 }

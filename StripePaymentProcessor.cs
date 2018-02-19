@@ -14,11 +14,12 @@ using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
+using Nop.Web.Framework.Themes;
 using Stripe;
 
 namespace Nop.Plugin.Payments.Stripe
 {
-    public class StripePaymentProcessor : BasePlugin, IPaymentMethod
+    public class StripePaymentProcessor : BasePlugin, IPaymentMethod, IThemeablePlugin
     {
         #region Fields
 
